@@ -1,39 +1,32 @@
 import SlimSelect from 'slim-select';
 import iziToast from 'izitoast';
 import 'izitoast/dist/css/iziToast.min.css';
-import { fetchBreeds, fetchCatByBreed } from './cat-api.js';
+import { fetchBreeds, fetchCatByBreed } from './cat-api';
 
-const select = document.querySelector('.breed-select');
+const select = document.querySelector('#breed-select');
 const catInfo = document.querySelector('.cat-info');
 const loader = document.querySelector('.loader');
-const errorElement = document.querySelector('.error');
 
-
-function displayError(message) {
+function displayError() {
   iziToast.show({
     title: 'Error',
-    message: `❌ ${message}`,
+    message: '❌ Oops! Something went wrong! Try reloading the page!',
     position: 'topCenter',
     color: 'red',
   });
-  errorElement.textContent = message;
-  errorElement.classList.remove('hidden');
 }
-
 
 function toggleHidden(element, isVisible) {
   element.classList.toggle('hidden', !isVisible);
 }
 
-
-async function handleBreedSelection(breedId) {
+function handleBreedSelection(breedId) {
   if (!breedId) {
     return;
   }
 
   toggleHidden(catInfo, false);
   toggleHidden(loader, true);
-  toggleHidden(errorElement, false);
 
   fetchCatByBreed(breedId)
     .then(displayCatInfo)
@@ -44,25 +37,21 @@ async function handleBreedSelection(breedId) {
 }
 
 function displayCatInfo(catData) {
-    if (catData.breeds && catData.breeds.length > 0) {
-      const { name, description, temperament } = catData.breeds[0];
-      const catImg = catData.url;
-  
-      catInfo.innerHTML = `
-        <img class="cat-img" src="${catImg}" alt="${name}"/>
-        <div class="cat-info-text">
-          <h2>${name}</h2>
-          <p>${description}</p>
-          <p><b>Temperament:</b> ${temperament}</p>
-        </div>
-      `;
-  
-      toggleHidden(catInfo, true);
-    } else {
-      displayError("No breed information found.");
-    }
-  }
+  const { name, description, temperament } = catData.breeds[0];
 
+  const catImg = catData.url;
+
+  catInfo.innerHTML = `
+      <img class="cat-img" src="${catImg}" alt="${name}"/>
+      <div class="cat-description">
+        <h2>${name}</h2>
+        <p>${description}</p>
+        <p><b>Temperament:</b> ${temperament}</p>
+      </div>
+  `;
+
+  toggleHidden(catInfo, true);
+}
 
 function initializeSelect(data) {
   toggleHidden(select, true);
@@ -71,24 +60,24 @@ function initializeSelect(data) {
     settings: {
       placeholderText: 'Search breed',
     },
-    data: [{ placeholder: true, text: 'Select breed' }, ...data],
+    data: [{ placeholder: true, text: '' }, ...data],
     events: {
       afterChange: newVal => handleBreedSelection(newVal[0]?.value),
     },
   });
 }
 
-
-async function initializeApp() {
-  toggleHidden(loader, true);
-  try {
-    const breeds = await fetchBreeds();
-    initializeSelect(breeds.map(({ id, name }) => ({ text: name, value: id })));
-  } catch (error) {
-    displayError(error.message);
-  } finally {
-    toggleHidden(loader, false);
-  }
+function initializeApp() {
+  fetchBreeds()
+    .then(breeds => {
+      initializeSelect(
+        breeds.map(({ id, name }) => ({ text: name, value: id }))
+      );
+    })
+    .catch(displayError)
+    .finally(() => {
+      toggleHidden(loader, false);
+    });
 }
 
-document.addEventListener('DOMContentLoaded', initializeApp);
+initializeApp();
